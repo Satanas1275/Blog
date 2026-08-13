@@ -33,8 +33,19 @@ h1 { margin: 0; font-size: 1.4rem; }
   color: var(--muted);
   border-left: 3px solid var(--accent);
 }
+.now-playing { display: flex; align-items: center; gap: 10px; }
 .now-playing a { color: var(--text); }
+.now-playing img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; }
 .now-playing.hidden { display: none; }
+
+.status {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border-left: 3px solid #ffb347;
+}
+.status.hidden { display: none; }
 
 main {
   max-width: 640px;

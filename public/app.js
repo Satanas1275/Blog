@@ -35,7 +35,24 @@ async function loadNowPlaying() {
     const content = np.link
       ? `<a href="${np.link}" target="_blank" rel="noopener">${escapeHtml(np.title)}</a>`
       : escapeHtml(np.title);
-    el.innerHTML = `${label} : ${content}${np.subtitle ? ` — ${escapeHtml(np.subtitle)}` : ''}`;
+    const img = np.image ? `<img src="/uploads/${np.image}" alt="" />` : '';
+    el.innerHTML = `${img}<span>${label} : ${content}${np.subtitle ? ` — ${escapeHtml(np.subtitle)}` : ''}</span>`;
+    el.classList.remove('hidden');
+  } catch {
+    el.classList.add('hidden');
+  }
+}
+
+async function loadStatus() {
+  const el = document.getElementById('status');
+  try {
+    const res = await fetch('/api/status');
+    const status = await res.json();
+    if (!status || !status.label) {
+      el.classList.add('hidden');
+      return;
+    }
+    el.textContent = `💬 ${status.label}`;
     el.classList.remove('hidden');
   } catch {
     el.classList.add('hidden');
@@ -58,5 +75,7 @@ function pingAnalytics() {
 
 loadFeed();
 loadNowPlaying();
+loadStatus();
 pingAnalytics();
 setInterval(loadNowPlaying, 15000);
+setInterval(loadStatus, 15000);
