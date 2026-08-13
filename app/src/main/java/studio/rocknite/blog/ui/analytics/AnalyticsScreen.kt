@@ -8,13 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
-import com.patrykandpatrick.vico.compose.chart.Chart
-import com.patrykandpatrick.vico.compose.chart.line.lineChart
-import com.patrykandpatrick.vico.core.entry.entryModelOf
+import com.patrykandpatryk.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatryk.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatryk.vico.compose.chart.Chart
+import com.patrykandpatryk.vico.compose.chart.line.lineChart
+import com.patrykandpatryk.vico.core.entry.entryModelOf
 import studio.rocknite.blog.network.AnalyticsSummary
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(summary: AnalyticsSummary?) {
     Scaffold(topBar = { TopAppBar(title = { Text("Analytique") }) }) { padding ->

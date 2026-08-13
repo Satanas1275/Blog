@@ -38,6 +38,7 @@ private sealed class Dest(val route: String, val label: String) {
     data object Analytics : Dest("analytics", "Analytique")
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
     val navController = rememberNavController()
