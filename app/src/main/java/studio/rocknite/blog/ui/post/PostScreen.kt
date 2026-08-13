@@ -32,7 +32,11 @@ import java.util.*
 fun PostScreen(
     isPublishing: Boolean,
     lastError: String?,
+    quickStatusLabels: List<String>,
     onPublish: (content: String, images: List<Uri>, publishedAt: Date) -> Unit,
+    onPickStatus: (String) -> Unit,
+    onAddStatus: (String) -> Unit,
+    onRemoveStatus: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var content by remember { mutableStateOf("") }
@@ -100,6 +104,15 @@ fun PostScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            QuickStatusBar(
+                labels = quickStatusLabels,
+                onPick = onPickStatus,
+                onAdd = onAddStatus,
+                onRemove = onRemoveStatus,
+            )
+
+            HorizontalDivider()
+
             OutlinedTextField(
                 value = content,
                 onValueChange = { content = it },

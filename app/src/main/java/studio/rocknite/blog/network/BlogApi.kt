@@ -16,7 +16,10 @@ data class NowPlayingPayload(
     val subtitle: String?,
     val link: String?,
     val state: String,
+    val image_base64: String?,
 )
+
+data class StatusPayload(val label: String)
 
 data class AnalyticsSummary(
     val days: Int,
@@ -46,7 +49,17 @@ interface BlogApi {
     @POST("api/now-playing")
     suspend fun pushNowPlayingBody(@Body payload: NowPlayingPayload): Response<Unit>
 
-    suspend fun pushNowPlaying(source: String, title: String, subtitle: String?, link: String?, state: String) {
-        pushNowPlayingBody(NowPlayingPayload(source, title, subtitle, link, state))
+    suspend fun pushNowPlaying(
+        source: String,
+        title: String,
+        subtitle: String?,
+        link: String?,
+        state: String,
+        imageBase64: String? = null,
+    ) {
+        pushNowPlayingBody(NowPlayingPayload(source, title, subtitle, link, state, imageBase64))
     }
+
+    @POST("api/status")
+    suspend fun postStatus(@Body payload: StatusPayload): Response<Unit>
 }

@@ -86,9 +86,13 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
                 PostScreen(
                     isPublishing = uiState.isPublishing,
                     lastError = uiState.lastError,
+                    quickStatusLabels = uiState.quickStatusLabels,
                     onPublish = { content: String, images: List<Uri>, publishedAt: Date ->
                         viewModel.publishPost(content, images, publishedAt)
                     },
+                    onPickStatus = { label -> viewModel.pickQuickStatus(label) },
+                    onAddStatus = { label -> viewModel.addQuickStatus(label) },
+                    onRemoveStatus = { label -> viewModel.removeQuickStatus(label) },
                 )
             }
             composable(Dest.Analytics.route) {
