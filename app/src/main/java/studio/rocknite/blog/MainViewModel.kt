@@ -23,17 +23,28 @@ data class MainUiState(
     val analytics: AnalyticsSummary? = null,
     val isPublishing: Boolean = false,
     val lastError: String? = null,
+    val serverUrl: String = "",
+    val token: String? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tokenStore = TokenStore(application)
-    private val api = ApiClient.create(tokenStore)
+    private var api = ApiClient.create(tokenStore)
 
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(
+        MainUiState(serverUrl = tokenStore.serverUrl, token = tokenStore.apiToken),
+    )
     val uiState: StateFlow<MainUiState> = _uiState
 
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+
+    fun saveSettings(serverUrl: String, token: String) {
+        tokenStore.serverUrl = serverUrl
+        tokenStore.apiToken = token
+        api = ApiClient.create(tokenStore) // recrée le client : l'URL de base est figée à la construction
+        _uiState.value = _uiState.value.copy(serverUrl = serverUrl, token = token)
+    }
 
     fun loadAnalytics() {
         viewModelScope.launch {

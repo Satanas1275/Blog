@@ -26,6 +26,6 @@ class TokenStore(context: Context) {
         set(value) = prefs.edit().putString("api_token", value).apply()
 
     var serverUrl: String
-        get() = prefs.getString("server_url", "https://blog.rocknite.studio") ?: "https://blog.rocknite.studio"
+        get() = prefs.getString("server_url", "https://bastian-riot.rocknite-studio.com") ?: "https://bastian-riot.rocknite-studio.com"
         set(value) = prefs.edit().putString("server_url", value).apply()
 }
