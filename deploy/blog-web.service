@@ -1,0 +1,16 @@
+[Unit]
+Description=Bastian RIOT blog (Node.js)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/blog-web
+EnvironmentFile=/opt/blog-web/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+User=blog
+Group=blog
+
+[Install]
+WantedBy=multi-user.target
