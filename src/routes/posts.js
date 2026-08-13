@@ -29,7 +29,7 @@ router.get('/', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 20, 100);
   const offset = parseInt(req.query.offset) || 0;
   const rows = db
-    .prepare('SELECT * FROM posts WHERE published_at <= datetime("now") ORDER BY published_at DESC LIMIT ? OFFSET ?')
+    .prepare("SELECT * FROM posts WHERE published_at <= datetime('now') ORDER BY published_at DESC LIMIT ? OFFSET ?")
     .all(limit, offset);
   res.json(rows.map((r) => ({ ...r, images: JSON.parse(r.images) })));
 });
