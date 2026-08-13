@@ -56,8 +56,9 @@ dependencies {
     // Stockage sécurisé du token
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // Graphiques pour la page analytics
-    implementation("com.patrykandpatrick.vico:compose-m3:1.14.0")
+    // Graphiques pour la page analytics (attention : groupId "patryk" pour l'API 1.x utilisée ici,
+    // le groupId "patrick" correctement orthographié est réservé aux versions 2.x/3.x avec une API différente)
+    implementation("com.patrykandpatryk.vico:compose-m3:1.13.1")
 
     // Aperçu des photos sélectionnées pour un post
     implementation("io.coil-kt:coil-compose:2.6.0")
