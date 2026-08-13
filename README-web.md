@@ -3,7 +3,7 @@
 ## Setup
 ```bash
 npm install
-cp .env.example .env   # puis change AUTH_TOKEN pour un vrai secret
+cp .env.example .env   # puis change AUTH_TOKEN pour un vrai secret (port par défaut : 3003)
 npm start
 ```
 
