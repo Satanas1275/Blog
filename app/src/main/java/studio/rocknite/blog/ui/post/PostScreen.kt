@@ -30,13 +30,25 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostScreen(
+    isPublishing: Boolean,
+    lastError: String?,
     onPublish: (content: String, images: List<Uri>, publishedAt: Date) -> Unit,
 ) {
     val context = LocalContext.current
     var content by remember { mutableStateOf("") }
     var images by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var publishedAt by remember { mutableStateOf(Date()) }
-    var isPublishing by remember { mutableStateOf(false) }
+
+    // Quand une publication en cours se termine sans erreur, on vide le formulaire.
+    var wasPublishing by remember { mutableStateOf(false) }
+    LaunchedEffect(isPublishing, lastError) {
+        if (wasPublishing && !isPublishing && lastError == null) {
+            content = ""
+            images = emptyList()
+            publishedAt = Date()
+        }
+        wasPublishing = isPublishing
+    }
 
     val imagePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents(),
@@ -75,7 +87,6 @@ fun PostScreen(
                 icon = { Icon(Icons.Filled.Send, contentDescription = null) },
                 onClick = {
                     if (content.isNotBlank() && !isPublishing) {
-                        isPublishing = true
                         onPublish(content, images, publishedAt)
                     }
                 },
@@ -109,6 +120,14 @@ fun PostScreen(
                     onClick = ::openDateTimePicker,
                     label = { Text(dateFormat.format(publishedAt)) },
                     leadingIcon = { Icon(Icons.Filled.CalendarMonth, contentDescription = null) },
+                )
+            }
+
+            if (lastError != null) {
+                Text(
+                    "Erreur : $lastError",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
 

@@ -84,6 +84,8 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
         ) {
             composable(Dest.Post.route) {
                 PostScreen(
+                    isPublishing = uiState.isPublishing,
+                    lastError = uiState.lastError,
                     onPublish = { content: String, images: List<Uri>, publishedAt: Date ->
                         viewModel.publishPost(content, images, publishedAt)
                     },
