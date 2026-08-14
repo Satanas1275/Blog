@@ -1,5 +1,7 @@
 package studio.rocknite.blog.ui.post
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -82,11 +84,9 @@ fun QuickStatusBar(
 }
 
 private fun Modifier.clickableSimple(onClick: () -> Unit): Modifier =
-    this.then(
-        androidx.compose.foundation.clickable(
-            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
-            indication = null,
-            onClick = onClick,
-        ),
+    this.clickable(
+        interactionSource = MutableInteractionSource(),
+        indication = null,
+        onClick = onClick,
     )
 
