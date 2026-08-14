@@ -32,6 +32,19 @@ data class NowPlayingPayload(
     val image_base64: String?,
 )
 
+data class MediaApp(
+    val id: Long,
+    val package_name: String,
+    val label: String?,
+    val templates: List<String>,
+)
+
+data class MediaAppUpsertPayload(
+    val package_name: String? = null,
+    val label: String? = null,
+    val templates: List<String>? = null,
+)
+
 data class StatusPayload(val label: String)
 data class StatusResponse(val id: Int, val label: String, val updated_at: String)
 
@@ -99,4 +112,16 @@ interface BlogApi {
 
     @DELETE("api/status")
     suspend fun deleteStatus(): Response<Unit>
+
+    @GET("api/media-apps")
+    suspend fun getMediaApps(): Response<List<MediaApp>>
+
+    @POST("api/media-apps")
+    suspend fun createMediaApp(@Body payload: MediaAppUpsertPayload): Response<MediaApp>
+
+    @PATCH("api/media-apps/{id}")
+    suspend fun updateMediaApp(@Path("id") id: Long, @Body payload: MediaAppUpsertPayload): Response<MediaApp>
+
+    @DELETE("api/media-apps/{id}")
+    suspend fun deleteMediaApp(@Path("id") id: Long): Response<Unit>
 }
