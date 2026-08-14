@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import studio.rocknite.blog.ui.analytics.AnalyticsScreen
+import studio.rocknite.blog.ui.feed.FeedScreen
 import studio.rocknite.blog.ui.post.PostScreen
 import studio.rocknite.blog.ui.settings.SettingsScreen
 import studio.rocknite.blog.ui.theme.RockniteBlogTheme
@@ -37,6 +39,7 @@ class MainActivity : ComponentActivity() {
 
 private sealed class Dest(val route: String, val label: String) {
     data object Post : Dest("post", "Poster")
+    data object Feed : Dest("feed", "Mes posts")
     data object Analytics : Dest("analytics", "Analytique")
     data object Settings : Dest("settings", "Config")
 }
@@ -45,7 +48,7 @@ private sealed class Dest(val route: String, val label: String) {
 @Composable
 private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
     val navController = rememberNavController()
-    val items = listOf(Dest.Post, Dest.Analytics, Dest.Settings)
+    val items = listOf(Dest.Post, Dest.Feed, Dest.Analytics, Dest.Settings)
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -66,6 +69,7 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
                         icon = {
                             val icon = when (dest) {
                                 Dest.Post -> Icons.Filled.Edit
+                                Dest.Feed -> Icons.Filled.List
                                 Dest.Analytics -> Icons.Filled.QueryStats
                                 Dest.Settings -> Icons.Filled.Settings
                             }
@@ -83,16 +87,30 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
             modifier = androidx.compose.ui.Modifier.padding(padding),
         ) {
             composable(Dest.Post.route) {
+                LaunchedEffect(Unit) { viewModel.loadCurrentStatus() }
                 PostScreen(
                     isPublishing = uiState.isPublishing,
                     lastError = uiState.lastError,
                     quickStatusLabels = uiState.quickStatusLabels,
+                    currentStatusLabel = uiState.currentStatusLabel,
                     onPublish = { content: String, images: List<Uri>, publishedAt: Date ->
                         viewModel.publishPost(content, images, publishedAt)
                     },
                     onPickStatus = { label -> viewModel.pickQuickStatus(label) },
                     onAddStatus = { label -> viewModel.addQuickStatus(label) },
                     onRemoveStatus = { label -> viewModel.removeQuickStatus(label) },
+                    onClearCurrentStatus = { viewModel.clearCurrentStatus() },
+                )
+            }
+            composable(Dest.Feed.route) {
+                LaunchedEffect(Unit) { viewModel.loadPosts() }
+                FeedScreen(
+                    posts = uiState.posts,
+                    imageBaseUrl = uiState.serverUrl,
+                    onEditContent = { id, content -> viewModel.editPostContent(id, content) },
+                    onAddImages = { id, images -> viewModel.addPostImages(id, images) },
+                    onRemoveImage = { id, filename -> viewModel.removePostImage(id, filename) },
+                    onDeletePost = { id -> viewModel.deletePost(id) },
                 )
             }
             composable(Dest.Analytics.route) {

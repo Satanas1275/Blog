@@ -21,14 +21,29 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun QuickStatusBar(
     labels: List<String>,
+    currentStatusLabel: String?,
     onPick: (String) -> Unit,
     onAdd: (String) -> Unit,
     onRemove: (String) -> Unit,
+    onClearCurrent: () -> Unit,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
     Column {
         Text("Statut rapide", style = MaterialTheme.typography.labelLarge)
+
+        if (currentStatusLabel != null) {
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(
+                    "Statut actuel : $currentStatusLabel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onClearCurrent) { Text("Effacer") }
+            }
+        }
+
         Spacer(Modifier.height(6.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(labels) { label ->

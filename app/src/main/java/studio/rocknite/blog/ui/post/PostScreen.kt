@@ -33,10 +33,12 @@ fun PostScreen(
     isPublishing: Boolean,
     lastError: String?,
     quickStatusLabels: List<String>,
+    currentStatusLabel: String?,
     onPublish: (content: String, images: List<Uri>, publishedAt: Date) -> Unit,
     onPickStatus: (String) -> Unit,
     onAddStatus: (String) -> Unit,
     onRemoveStatus: (String) -> Unit,
+    onClearCurrentStatus: () -> Unit,
 ) {
     val context = LocalContext.current
     var content by remember { mutableStateOf("") }
@@ -106,9 +108,11 @@ fun PostScreen(
         ) {
             QuickStatusBar(
                 labels = quickStatusLabels,
+                currentStatusLabel = currentStatusLabel,
                 onPick = onPickStatus,
                 onAdd = onAddStatus,
                 onRemove = onRemoveStatus,
+                onClearCurrent = onClearCurrentStatus,
             )
 
             HorizontalDivider()

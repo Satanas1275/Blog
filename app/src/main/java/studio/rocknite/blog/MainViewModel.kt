@@ -15,6 +15,8 @@ import studio.rocknite.blog.data.QuickStatusStore
 import studio.rocknite.blog.data.TokenStore
 import studio.rocknite.blog.network.AnalyticsSummary
 import studio.rocknite.blog.network.ApiClient
+import studio.rocknite.blog.network.PatchPostPayload
+import studio.rocknite.blog.network.Post
 import studio.rocknite.blog.network.StatusPayload
 import java.io.File
 import java.text.SimpleDateFormat
@@ -29,6 +31,8 @@ data class MainUiState(
     val token: String? = null,
     val quickStatusLabels: List<String> = emptyList(),
     val lastStatusError: String? = null,
+    val posts: List<Post> = emptyList(),
+    val currentStatusLabel: String? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -61,9 +65,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .onSuccess { response ->
                     _uiState.value = _uiState.value.copy(
                         lastStatusError = if (response.isSuccessful) null else "Erreur serveur (${response.code()})",
+                        currentStatusLabel = if (response.isSuccessful) label else _uiState.value.currentStatusLabel,
                     )
                 }
                 .onFailure { e -> _uiState.value = _uiState.value.copy(lastStatusError = e.message) }
+        }
+    }
+
+    fun clearCurrentStatus() {
+        viewModelScope.launch {
+            runCatching { api.deleteStatus() }
+                .onSuccess { response ->
+                    if (response.isSuccessful) {
+                        _uiState.value = _uiState.value.copy(currentStatusLabel = null, lastStatusError = null)
+                    } else {
+                        _uiState.value = _uiState.value.copy(lastStatusError = "Erreur serveur (${response.code()})")
+                    }
+                }
+                .onFailure { e -> _uiState.value = _uiState.value.copy(lastStatusError = e.message) }
+        }
+    }
+
+    fun loadCurrentStatus() {
+        viewModelScope.launch {
+            runCatching { api.getStatus() }
+                .onSuccess { response ->
+                    if (response.isSuccessful) {
+                        _uiState.value = _uiState.value.copy(currentStatusLabel = response.body()?.label)
+                    }
+                }
         }
     }
 
@@ -85,6 +115,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.value = _uiState.value.copy(analytics = response.body())
                     }
                 }
+        }
+    }
+
+    fun loadPosts() {
+        viewModelScope.launch {
+            runCatching { api.getPosts() }
+                .onSuccess { response ->
+                    if (response.isSuccessful) {
+                        _uiState.value = _uiState.value.copy(posts = response.body() ?: emptyList())
+                    }
+                }
+        }
+    }
+
+    fun editPostContent(postId: Long, newContent: String) {
+        viewModelScope.launch {
+            runCatching { api.updatePostContent(postId, PatchPostPayload(newContent)) }
+                .onSuccess { if (it.isSuccessful) loadPosts() }
+        }
+    }
+
+    fun addPostImages(postId: Long, images: List<Uri>) {
+        viewModelScope.launch {
+            val imageParts = images.mapNotNull { uri ->
+                uriToTempFile(uri)?.let { file ->
+                    MultipartBody.Part.createFormData(
+                        "images",
+                        file.name,
+                        file.asRequestBody("image/*".toMediaTypeOrNull()),
+                    )
+                }
+            }
+            runCatching { api.addPostImages(postId, imageParts) }
+                .onSuccess { if (it.isSuccessful) loadPosts() }
+        }
+    }
+
+    fun removePostImage(postId: Long, filename: String) {
+        viewModelScope.launch {
+            runCatching { api.deletePostImage(postId, filename) }
+                .onSuccess { if (it.isSuccessful) loadPosts() }
+        }
+    }
+
+    fun deletePost(postId: Long) {
+        viewModelScope.launch {
+            runCatching { api.deletePost(postId) }
+                .onSuccess { if (it.isSuccessful) loadPosts() }
         }
     }
 
@@ -111,6 +189,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         isPublishing = false,
                         lastError = if (response.isSuccessful) null else "Erreur serveur (${response.code()})",
                     )
+                    if (response.isSuccessful) loadPosts()
                 }
                 .onFailure { e ->
                     _uiState.value = _uiState.value.copy(isPublishing = false, lastError = e.message)
