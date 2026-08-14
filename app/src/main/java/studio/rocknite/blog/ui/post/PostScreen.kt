@@ -34,6 +34,7 @@ fun PostScreen(
     lastError: String?,
     quickStatusLabels: List<String>,
     currentStatusLabel: String?,
+    lastDetection: studio.rocknite.blog.data.LastDetectionStore.Snapshot?,
     onPublish: (content: String, images: List<Uri>, publishedAt: Date) -> Unit,
     onPickStatus: (String) -> Unit,
     onAddStatus: (String) -> Unit,
@@ -117,6 +118,10 @@ fun PostScreen(
 
             HorizontalDivider()
 
+            DetectionIndicator(lastDetection)
+
+            HorizontalDivider()
+
             OutlinedTextField(
                 value = content,
                 onValueChange = { content = it },
@@ -164,6 +169,43 @@ fun PostScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Montre ce que le service MediaSession a détecté en dernier (et si l'envoi a marché),
+ * pour que ça ne soit pas une boîte noire côté utilisateur.
+ */
+@Composable
+private fun DetectionIndicator(lastDetection: studio.rocknite.blog.data.LastDetectionStore.Snapshot?) {
+    Column {
+        Text("Détection média", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        if (lastDetection == null) {
+            Text(
+                "Aucune détection pour l'instant. Vérifie l'accès aux notifications dans Config si ça persiste.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        } else {
+            val ago = remember(lastDetection.atMillis) {
+                val seconds = (System.currentTimeMillis() - lastDetection.atMillis) / 1000
+                when {
+                    seconds < 60 -> "il y a ${seconds}s"
+                    seconds < 3600 -> "il y a ${seconds / 60}min"
+                    else -> "il y a ${seconds / 3600}h"
+                }
+            }
+            val statusColor = if (lastDetection.pushOk) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+            Text(
+                "${lastDetection.title}${lastDetection.subtitle?.let { " — $it" } ?: ""}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                "${lastDetection.packageName} · $ago · ${if (lastDetection.pushOk) "envoyé ✓" else "échec d'envoi"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = statusColor,
+            )
         }
     }
 }

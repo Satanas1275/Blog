@@ -11,10 +11,13 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import studio.rocknite.blog.data.LastDetectionStore
 import studio.rocknite.blog.data.QuickStatusStore
 import studio.rocknite.blog.data.TokenStore
 import studio.rocknite.blog.network.AnalyticsSummary
 import studio.rocknite.blog.network.ApiClient
+import studio.rocknite.blog.network.MediaApp
+import studio.rocknite.blog.network.MediaAppUpsertPayload
 import studio.rocknite.blog.network.PatchPostPayload
 import studio.rocknite.blog.network.Post
 import studio.rocknite.blog.network.StatusPayload
@@ -33,12 +36,15 @@ data class MainUiState(
     val lastStatusError: String? = null,
     val posts: List<Post> = emptyList(),
     val currentStatusLabel: String? = null,
+    val mediaApps: List<MediaApp> = emptyList(),
+    val lastDetection: LastDetectionStore.Snapshot? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tokenStore = TokenStore(application)
     private val quickStatusStore = QuickStatusStore(application)
+    private val lastDetectionStore = LastDetectionStore(application)
     private var api = ApiClient.create(tokenStore)
 
     private val _uiState = MutableStateFlow(
@@ -46,11 +52,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             serverUrl = tokenStore.serverUrl,
             token = tokenStore.apiToken,
             quickStatusLabels = quickStatusStore.getLabels(),
+            lastDetection = lastDetectionStore.get(),
         ),
     )
     val uiState: StateFlow<MainUiState> = _uiState
 
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+
+    fun refreshLastDetection() {
+        _uiState.value = _uiState.value.copy(lastDetection = lastDetectionStore.get())
+    }
+
+    fun loadMediaApps() {
+        viewModelScope.launch {
+            runCatching { api.getMediaApps() }
+                .onSuccess { response ->
+                    if (response.isSuccessful) {
+                        _uiState.value = _uiState.value.copy(mediaApps = response.body() ?: emptyList())
+                    }
+                }
+        }
+    }
+
+    fun addMediaApp(packageName: String, label: String, templates: List<String>) {
+        viewModelScope.launch {
+            runCatching { api.createMediaApp(MediaAppUpsertPayload(packageName, label.ifBlank { null }, templates)) }
+                .onSuccess { if (it.isSuccessful) loadMediaApps() }
+        }
+    }
+
+    fun updateMediaApp(id: Long, packageName: String, label: String, templates: List<String>) {
+        viewModelScope.launch {
+            runCatching { api.updateMediaApp(id, MediaAppUpsertPayload(packageName, label.ifBlank { null }, templates)) }
+                .onSuccess { if (it.isSuccessful) loadMediaApps() }
+        }
+    }
+
+    fun deleteMediaApp(id: Long) {
+        viewModelScope.launch {
+            runCatching { api.deleteMediaApp(id) }
+                .onSuccess { if (it.isSuccessful) loadMediaApps() }
+        }
+    }
 
     fun saveSettings(serverUrl: String, token: String) {
         tokenStore.serverUrl = serverUrl

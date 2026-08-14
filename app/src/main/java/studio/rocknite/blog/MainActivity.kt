@@ -21,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import studio.rocknite.blog.ui.analytics.AnalyticsScreen
 import studio.rocknite.blog.ui.feed.FeedScreen
+import studio.rocknite.blog.ui.mediaapps.MediaAppsScreen
 import studio.rocknite.blog.ui.post.PostScreen
 import studio.rocknite.blog.ui.settings.SettingsScreen
 import studio.rocknite.blog.ui.theme.RockniteBlogTheme
@@ -42,6 +43,7 @@ private sealed class Dest(val route: String, val label: String) {
     data object Feed : Dest("feed", "Mes posts")
     data object Analytics : Dest("analytics", "Analytique")
     data object Settings : Dest("settings", "Config")
+    data object MediaApps : Dest("media-apps", "Apps suivies")
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -72,6 +74,7 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
                                 Dest.Feed -> Icons.Filled.List
                                 Dest.Analytics -> Icons.Filled.QueryStats
                                 Dest.Settings -> Icons.Filled.Settings
+                                Dest.MediaApps -> Icons.Filled.Settings // jamais affiché ici (pas dans `items`)
                             }
                             Icon(icon, contentDescription = dest.label)
                         },
@@ -88,11 +91,18 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
         ) {
             composable(Dest.Post.route) {
                 LaunchedEffect(Unit) { viewModel.loadCurrentStatus() }
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        viewModel.refreshLastDetection()
+                        kotlinx.coroutines.delay(5000)
+                    }
+                }
                 PostScreen(
                     isPublishing = uiState.isPublishing,
                     lastError = uiState.lastError,
                     quickStatusLabels = uiState.quickStatusLabels,
                     currentStatusLabel = uiState.currentStatusLabel,
+                    lastDetection = uiState.lastDetection,
                     onPublish = { content: String, images: List<Uri>, publishedAt: Date ->
                         viewModel.publishPost(content, images, publishedAt)
                     },
@@ -122,6 +132,16 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
                     currentServerUrl = uiState.serverUrl,
                     currentToken = uiState.token,
                     onSave = { url, token -> viewModel.saveSettings(url, token) },
+                    onNavigateToMediaApps = { navController.navigate(Dest.MediaApps.route) },
+                )
+            }
+            composable(Dest.MediaApps.route) {
+                LaunchedEffect(Unit) { viewModel.loadMediaApps() }
+                MediaAppsScreen(
+                    apps = uiState.mediaApps,
+                    onAdd = { packageName, label, templates -> viewModel.addMediaApp(packageName, label, templates) },
+                    onUpdate = { id, packageName, label, templates -> viewModel.updateMediaApp(id, packageName, label, templates) },
+                    onDelete = { id -> viewModel.deleteMediaApp(id) },
                 )
             }
         }

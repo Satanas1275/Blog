@@ -31,6 +31,7 @@ fun SettingsScreen(
     currentServerUrl: String,
     currentToken: String?,
     onSave: (serverUrl: String, token: String) -> Unit,
+    onNavigateToMediaApps: () -> Unit,
 ) {
     val context = LocalContext.current
     var serverUrl by remember { mutableStateOf(currentServerUrl) }
@@ -131,6 +132,12 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Text("Enregistré", color = MaterialTheme.colorScheme.primary)
                 }
+            }
+
+            HorizontalDivider()
+
+            OutlinedButton(onClick = onNavigateToMediaApps) {
+                Text("Gérer les apps suivies")
             }
         }
     }
