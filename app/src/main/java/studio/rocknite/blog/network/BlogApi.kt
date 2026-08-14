@@ -100,8 +100,8 @@ interface BlogApi {
         link: String?,
         state: String,
         imageBase64: String? = null,
-    ) {
-        pushNowPlayingBody(NowPlayingPayload(source, title, subtitle, link, state, imageBase64))
+    ): Response<Unit> {
+        return pushNowPlayingBody(NowPlayingPayload(source, title, subtitle, link, state, imageBase64))
     }
 
     @GET("api/status")
