@@ -1,6 +1,8 @@
+const BASE = window.__BASE_PATH__ || '';
+
 async function loadFeed() {
   const feed = document.getElementById('feed');
-  const res = await fetch('/api/posts?limit=30');
+  const res = await fetch(`${BASE}/api/posts?limit=30`);
   const posts = await res.json();
 
   feed.innerHTML = posts
@@ -12,7 +14,7 @@ async function loadFeed() {
         ${
           p.images.length
             ? `<div class="images">${p.images
-                .map((img) => `<img src="/uploads/${img}" loading="lazy" />`)
+                .map((img) => `<img src="${BASE}/uploads/${img}" loading="lazy" />`)
                 .join('')}</div>`
             : ''
         }
@@ -26,7 +28,7 @@ let mediaAppsCache = null;
 async function getMediaApps() {
   if (mediaAppsCache) return mediaAppsCache;
   try {
-    const res = await fetch('/api/media-apps');
+    const res = await fetch(`${BASE}/api/media-apps`);
     mediaAppsCache = await res.json();
   } catch {
     mediaAppsCache = [];
@@ -41,7 +43,7 @@ function fillTemplate(template, np) {
 async function loadNowPlaying() {
   const el = document.getElementById('now-playing');
   try {
-    const res = await fetch('/api/now-playing');
+    const res = await fetch(`${BASE}/api/now-playing`);
     const np = await res.json();
     if (!np || !np.title) {
       el.classList.add('hidden');
@@ -61,7 +63,7 @@ async function loadNowPlaying() {
     const content = np.link
       ? `<a href="${np.link}" target="_blank" rel="noopener">${escapeHtml(text)}</a>`
       : escapeHtml(text);
-    const img = np.image ? `<img src="/uploads/${np.image}" alt="" />` : '';
+    const img = np.image ? `<img src="${BASE}/uploads/${np.image}" alt="" />` : '';
     el.innerHTML = `${img}<span>${content}</span>`;
     el.classList.remove('hidden');
   } catch {
@@ -72,7 +74,7 @@ async function loadNowPlaying() {
 async function loadStatus() {
   const el = document.getElementById('status');
   try {
-    const res = await fetch('/api/status');
+    const res = await fetch(`${BASE}/api/status`);
     const status = await res.json();
     if (!status || !status.label) {
       el.classList.add('hidden');
@@ -92,7 +94,7 @@ function escapeHtml(str) {
 }
 
 function pingAnalytics() {
-  fetch('/api/analytics/ping', {
+  fetch(`${BASE}/api/analytics/ping`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ event_type: 'page_view', path: location.pathname }),

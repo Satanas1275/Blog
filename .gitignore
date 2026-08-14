@@ -3,3 +3,4 @@ data/
 .env
 public/uploads/*
 !public/uploads/.gitkeep
+logs/
