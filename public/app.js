@@ -21,6 +21,23 @@ async function loadFeed() {
     .join('');
 }
 
+let mediaAppsCache = null;
+
+async function getMediaApps() {
+  if (mediaAppsCache) return mediaAppsCache;
+  try {
+    const res = await fetch('/api/media-apps');
+    mediaAppsCache = await res.json();
+  } catch {
+    mediaAppsCache = [];
+  }
+  return mediaAppsCache;
+}
+
+function fillTemplate(template, np) {
+  return template.replace(/\{name\}/g, np.title || '').replace(/\{subtitle\}/g, np.subtitle || '');
+}
+
 async function loadNowPlaying() {
   const el = document.getElementById('now-playing');
   try {
@@ -30,13 +47,22 @@ async function loadNowPlaying() {
       el.classList.add('hidden');
       return;
     }
-    const label =
-      np.source === 'youtube_music' ? '🎵 Écoute' : np.source === 'crunchyroll' ? '📺 Regarde' : '▶️ En ce moment';
+
+    const apps = await getMediaApps();
+    const config = apps.find((a) => a.package_name === np.source);
+    let text;
+    if (config && config.templates.length > 0) {
+      const template = config.templates[Math.floor(Math.random() * config.templates.length)];
+      text = fillTemplate(template, np);
+    } else {
+      text = np.title; // fallback si l'app détectée n'a pas (encore) de config côté site
+    }
+
     const content = np.link
-      ? `<a href="${np.link}" target="_blank" rel="noopener">${escapeHtml(np.title)}</a>`
-      : escapeHtml(np.title);
+      ? `<a href="${np.link}" target="_blank" rel="noopener">${escapeHtml(text)}</a>`
+      : escapeHtml(text);
     const img = np.image ? `<img src="/uploads/${np.image}" alt="" />` : '';
-    el.innerHTML = `${img}<span>${label} : ${content}${np.subtitle ? ` — ${escapeHtml(np.subtitle)}` : ''}</span>`;
+    el.innerHTML = `${img}<span>${content}</span>`;
     el.classList.remove('hidden');
   } catch {
     el.classList.add('hidden');
@@ -79,3 +105,4 @@ loadStatus();
 pingAnalytics();
 setInterval(loadNowPlaying, 15000);
 setInterval(loadStatus, 15000);
+setInterval(() => { mediaAppsCache = null; }, 60000); // permet de prendre en compte les changements de config

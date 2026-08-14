@@ -7,6 +7,7 @@ import postsRouter from './routes/posts.js';
 import nowPlayingRouter from './routes/nowPlaying.js';
 import analyticsRouter from './routes/analytics.js';
 import statusRouter from './routes/status.js';
+import mediaAppsRouter from './routes/mediaApps.js';
 import './db.js'; // initialise les tables au démarrage
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,7 @@ app.use('/api/posts', postsRouter);
 app.use('/api/now-playing', nowPlayingRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/status', statusRouter);
+app.use('/api/media-apps', mediaAppsRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

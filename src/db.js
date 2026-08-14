@@ -37,6 +37,16 @@ CREATE TABLE IF NOT EXISTS status (
   updated_at TEXT
 );
 
+-- Apps suivies pour la détection MediaSession + templates de message (placeholders {name}/{subtitle}).
+-- "source" dans now_playing correspond au package_name ici.
+CREATE TABLE IF NOT EXISTS media_apps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  package_name TEXT NOT NULL UNIQUE,
+  label TEXT,                      -- nom affiché en gestion dans l'app (ex: "YouTube Music (ReVanced)")
+  templates TEXT NOT NULL DEFAULT '[]', -- JSON array de strings, ex: ["Écoute {name}", "Se détend sur {name}"]
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS analytics_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   event_type TEXT NOT NULL,        -- page_view | post_view | now_playing_ping ...
@@ -50,4 +60,23 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 const nowPlayingCols = db.prepare("PRAGMA table_info(now_playing)").all().map((c) => c.name);
 if (!nowPlayingCols.includes('image')) {
   db.exec('ALTER TABLE now_playing ADD COLUMN image TEXT');
+}
+
+// Seed des apps suivies par défaut (une seule fois, si la table est vide) — prévoit les deux
+// variantes (standard + patchée ReVanced) puisque tout le monde ne patch pas les mêmes apps.
+const mediaAppsCount = db.prepare('SELECT COUNT(*) AS count FROM media_apps').get().count;
+if (mediaAppsCount === 0) {
+  const insert = db.prepare(
+    'INSERT INTO media_apps (package_name, label, templates) VALUES (?, ?, ?)'
+  );
+  const defaults = [
+    ['com.google.android.apps.youtube.music', 'YouTube Music', ['Écoute {name}', 'En train de kiffer {name}']],
+    ['app.revanced.android.apps.youtube.music', 'YouTube Music (ReVanced)', ['Écoute {name}', 'En train de kiffer {name}']],
+    ['com.google.android.youtube', 'YouTube', ['Regarde des vidéos sur YouTube']],
+    ['app.revanced.android.youtube', 'YouTube (ReVanced)', ['Regarde des vidéos sur YouTube']],
+    ['com.crunchyroll.crunchyroid', 'Crunchyroll', ['Regarde {name} sur Crunchyroll', 'En train de se détendre sur {name}']],
+  ];
+  for (const [packageName, label, templates] of defaults) {
+    insert.run(packageName, label, JSON.stringify(templates));
+  }
 }
