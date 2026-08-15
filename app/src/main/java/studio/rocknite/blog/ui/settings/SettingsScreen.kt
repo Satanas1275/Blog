@@ -1,5 +1,11 @@
 package studio.rocknite.blog.ui.settings
 
+import android.Manifest
+import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -16,10 +22,13 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import studio.rocknite.blog.data.ReminderStore
 import studio.rocknite.blog.media.isNotificationListenerEnabled
 import studio.rocknite.blog.media.openNotificationListenerSettings
+import studio.rocknite.blog.reminder.ReminderScheduler
 
 /**
  * Écran de config : URL du serveur + token d'API, stockés chiffrés (TokenStore).
@@ -53,6 +62,53 @@ fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val reminderStore = remember { ReminderStore(context) }
+    var reminderEnabled by remember { mutableStateOf(reminderStore.enabled) }
+    var reminderHour by remember { mutableIntStateOf(reminderStore.hour) }
+    var reminderMinute by remember { mutableIntStateOf(reminderStore.minute) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            reminderStore.enabled = true
+            reminderEnabled = true
+            ReminderScheduler.schedule(context, reminderHour, reminderMinute)
+        }
+    }
+
+    fun toggleReminder(enable: Boolean) {
+        if (enable) {
+            val hasNotifPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            if (!hasNotifPermission) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+            reminderStore.enabled = true
+            reminderEnabled = true
+            ReminderScheduler.schedule(context, reminderHour, reminderMinute)
+        } else {
+            reminderStore.enabled = false
+            reminderEnabled = false
+            ReminderScheduler.cancel(context)
+        }
+    }
+
+    fun openTimePicker() {
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                reminderHour = hour
+                reminderMinute = minute
+                reminderStore.hour = hour
+                reminderStore.minute = minute
+                if (reminderEnabled) ReminderScheduler.schedule(context, hour, minute)
+            },
+            reminderHour, reminderMinute, true,
+        ).show()
+    }
+
     Scaffold(topBar = { TopAppBar(title = { Text("Configuration") }) }) { padding ->
         Column(
             modifier = Modifier.padding(padding).padding(16.dp).fillMaxSize(),
@@ -79,6 +135,24 @@ fun SettingsScreen(
                     } else {
                         Button(onClick = { openNotificationListenerSettings(context) }) {
                             Text("Activer dans les réglages")
+                        }
+                    }
+                }
+            }
+
+            ElevatedCard {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Rappel quotidien", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Switch(checked = reminderEnabled, onCheckedChange = { toggleReminder(it) })
+                    }
+                    Text(
+                        "Une petite notif \"quoi de neuf ?\" à l'heure choisie, pour ne pas oublier de poster.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (reminderEnabled) {
+                        TextButton(onClick = ::openTimePicker) {
+                            Text("Heure : %02d:%02d".format(reminderHour, reminderMinute))
                         }
                     }
                 }

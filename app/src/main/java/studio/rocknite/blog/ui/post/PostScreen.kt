@@ -206,6 +206,13 @@ private fun DetectionIndicator(lastDetection: studio.rocknite.blog.data.LastDete
                 style = MaterialTheme.typography.bodySmall,
                 color = statusColor,
             )
+            if (!lastDetection.pushOk && lastDetection.errorDetail != null) {
+                Text(
+                    lastDetection.errorDetail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 }

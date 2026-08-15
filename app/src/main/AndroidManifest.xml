@@ -7,7 +7,9 @@
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -26,16 +28,27 @@
             </intent-filter>
         </activity>
 
-        <!-- Service qui écoute les MediaSessions (YT Music, Crunchyroll, YouTube) -->
+        <!-- Service qui écoute les MediaSessions (YT Music, Crunchyroll, YouTube).
+             Promu en foreground service (notification discrète) pour éviter que les OEM
+             agressifs (MIUI/Xiaomi notamment) ne tuent le réseau en arrière-plan. -->
         <service
             android:name=".media.MediaWatcherService"
             android:label="Rocknite Blog Media Watcher"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:foregroundServiceType="dataSync"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <receiver android:name=".reminder.ReminderReceiver" android:exported="false" />
+
+        <receiver android:name=".reminder.BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>

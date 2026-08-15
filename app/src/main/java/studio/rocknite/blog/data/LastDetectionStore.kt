@@ -5,16 +5,19 @@ import android.content.Context
 /**
  * Garde une trace locale de la dernière détection MediaSession (et du résultat de l'envoi),
  * pour que l'app puisse afficher "quoi de détecté en ce moment" au lieu d'être une boîte noire.
+ * errorDetail permet un vrai diagnostic en cas d'échec (exception ou code HTTP), au lieu d'un
+ * simple "échec" sans plus d'info.
  */
 class LastDetectionStore(context: Context) {
     private val prefs = context.getSharedPreferences("last_detection", Context.MODE_PRIVATE)
 
-    fun setDetected(packageName: String, title: String, subtitle: String?, pushOk: Boolean) {
+    fun setDetected(packageName: String, title: String, subtitle: String?, pushOk: Boolean, errorDetail: String? = null) {
         prefs.edit()
             .putString("package", packageName)
             .putString("title", title)
             .putString("subtitle", subtitle)
             .putBoolean("push_ok", pushOk)
+            .apply { if (errorDetail != null) putString("error_detail", errorDetail) else remove("error_detail") }
             .putLong("at", System.currentTimeMillis())
             .apply()
     }
@@ -29,6 +32,7 @@ class LastDetectionStore(context: Context) {
         val subtitle: String?,
         val pushOk: Boolean,
         val atMillis: Long,
+        val errorDetail: String? = null,
     )
 
     fun get(): Snapshot? {
@@ -40,6 +44,7 @@ class LastDetectionStore(context: Context) {
             subtitle = prefs.getString("subtitle", null),
             pushOk = prefs.getBoolean("push_ok", false),
             atMillis = prefs.getLong("at", 0L),
+            errorDetail = prefs.getString("error_detail", null),
         )
     }
 }
