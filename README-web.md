@@ -16,8 +16,9 @@ npm start
 | POST | `/api/posts/:id/images` | Bearer token | Ajouter des images à un post existant (multipart `images[]`) |
 | DELETE | `/api/posts/:id/images/:filename` | Bearer token | Retirer une image précise d'un post |
 | DELETE | `/api/posts/:id` | Bearer token | Supprimer un post (+ ses images) |
-| GET | `/api/now-playing` | non | État actuel (pour le widget) |
+| GET | `/api/now-playing` | non | État actuel (pour le widget), `null` si périmé (voir `NOW_PLAYING_STALE_MINUTES`) |
 | POST | `/api/now-playing` | Bearer token | Mettre à jour l'état (appelé par l'app), `image_base64` optionnel |
+| DELETE | `/api/now-playing` | Bearer token | Effacer immédiatement (appelé par l'app dès qu'elle détecte l'arrêt) |
 | GET | `/api/status` | non | Statut rapide actuel |
 | POST | `/api/status` | Bearer token | Définir le statut rapide (écrase le précédent) |
 | DELETE | `/api/status` | Bearer token | Effacer le statut rapide actuel |
@@ -40,6 +41,7 @@ fixe sans placeholder (ex: YouTube : `"Regarde des vidéos sur YouTube"`).
 | `APP_NAME` | `Bastian RIOT` | Nom affiché sur le site (titre + en-tête) |
 | `BASE_PATH` | `/` | Sous-chemin de montage. `/blog` sert le site sur `monsite.com/blog` au lieu de `monsite.com/` |
 | `LOGS_DIR` | `./logs` | Dossier des logs (voir plus bas) |
+| `NOW_PLAYING_STALE_MINUTES` | `8` | Now-playing considéré arrêté si aucune mise à jour depuis ce délai (filet de sécurité si l'app ne prévient pas explicitement de l'arrêt) |
 | `ANALYTICS_EXTERNAL_URL` | — | URL d'un service d'analytics externe, ex: `http://localhost:5055` |
 | `ANALYTICS_EXTERNAL_TOKEN` | — | Token envoyé en `Authorization: Bearer` vers ce service |
 | `ANALYTICS_TO` | `false` | Si `true`, chaque vue de page est aussi poussée vers le service externe |

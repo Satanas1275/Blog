@@ -9,13 +9,20 @@ const router = Router();
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || './public/uploads';
 
-// GET /api/now-playing — public, pour le widget du site
+// Si l'app n'a rien renvoyé depuis ce délai, on considère que la lecture s'est arrêtée
+// (app tuée par le système, réseau coupé...) même sans message explicite d'arrêt.
+const STALE_MINUTES = parseInt(process.env.NOW_PLAYING_STALE_MINUTES) || 8;
+
+// GET /api/now-playing — public, pour le widget du site. Périmé après STALE_MINUTES sans mise à jour.
 router.get('/', (req, res) => {
-  const row = db.prepare('SELECT * FROM now_playing WHERE id = 1').get();
+  const row = db
+    .prepare(`SELECT * FROM now_playing WHERE id = 1 AND updated_at >= datetime('now', ?)`)
+    .get(`-${STALE_MINUTES} minutes`);
   res.json(row || null);
 });
 
-// POST /api/now-playing — protégé, appelé par l'app quand une MediaSession change.
+// POST /api/now-playing — protégé, appelé par l'app quand une MediaSession change, ou en heartbeat
+// périodique (~5min) même sans changement, pour repousser l'expiration tant que ça joue toujours.
 // image_base64 (optionnel) : pochette/miniature envoyée par l'app (ex: album art MediaSession).
 // Taille volontairement limitée côté app (vignette), donc base64 dans le JSON reste raisonnable.
 router.post('/', requireAuth, (req, res) => {
@@ -52,6 +59,13 @@ router.post('/', requireAuth, (req, res) => {
        link=excluded.link, image=excluded.image, state=excluded.state, updated_at=excluded.updated_at`
   ).run(source, title, subtitle || null, link || null, finalImage, state || 'playing');
 
+  res.json({ ok: true });
+});
+
+// DELETE /api/now-playing — protégé, appelé par l'app dès qu'elle détecte l'arrêt de la lecture
+// (plus réactif que d'attendre l'expiration STALE_MINUTES)
+router.delete('/', requireAuth, (req, res) => {
+  db.prepare('DELETE FROM now_playing WHERE id = 1').run();
   res.json({ ok: true });
 });
 
