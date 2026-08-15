@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
 
   const query = isAuthed
     ? 'SELECT * FROM posts ORDER BY published_at DESC LIMIT ? OFFSET ?'
-    : "SELECT * FROM posts WHERE published_at <= datetime('now') ORDER BY published_at DESC LIMIT ? OFFSET ?";
+    : "SELECT * FROM posts WHERE datetime(published_at) <= datetime('now') ORDER BY published_at DESC LIMIT ? OFFSET ?";
 
   const rows = db.prepare(query).all(limit, offset);
   res.json(rows.map((r) => ({ ...r, images: JSON.parse(r.images) })));
