@@ -93,6 +93,9 @@ interface BlogApi {
     @POST("api/now-playing")
     suspend fun pushNowPlayingBody(@Body payload: NowPlayingPayload): Response<Unit>
 
+    @DELETE("api/now-playing")
+    suspend fun deleteNowPlaying(): Response<Unit>
+
     @GET("api/status")
     suspend fun getStatus(): Response<StatusResponse?>
 

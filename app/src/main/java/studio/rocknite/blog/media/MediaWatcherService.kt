@@ -39,6 +39,12 @@ import java.io.ByteArrayOutputStream
  *    active, que le listener seul ne détecte pas forcément (MediaSession ne notifie pas toujours
  *    de changement de "liste active" pour un simple changement de piste).
  *
+ * Deux garde-fous pour ne jamais rester bloqué sur un ancien statut :
+ *  - Heartbeat toutes les 5min : renvoie le même statut même si rien n'a changé, pour repousser
+ *    l'expiration côté serveur tant que la lecture continue.
+ *  - Effacement explicite dès que plus rien ne joue (DELETE /api/now-playing), en plus du filet de
+ *    sécurité côté serveur qui expire automatiquement un statut trop vieux (voir NOW_PLAYING_STALE_MINUTES).
+ *
  * Foreground service (notification discrète) : sur les OEM agressifs sur la gestion batterie
  * (MIUI/Xiaomi en particulier), un service en pur arrière-plan peut voir son accès réseau coupé.
  * Le passer en foreground réduit fortement ce risque.
@@ -49,6 +55,7 @@ class MediaWatcherService : NotificationListenerService() {
     private lateinit var trackedPackagesCache: TrackedPackagesCache
     private lateinit var lastDetectionStore: LastDetectionStore
     private var lastPushedKey: String? = null
+    private var lastHeartbeatAtMillis: Long = 0L
 
     private val job = Job()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -98,6 +105,11 @@ class MediaWatcherService : NotificationListenerService() {
 
             val relevant = controllers.firstOrNull { it.packageName in tracked && isPlaying(it) }
             if (relevant == null) {
+                if (lastPushedKey != null) {
+                    // On jouait quelque chose de suivi juste avant : on prévient explicitement le
+                    // serveur de l'arrêt plutôt que d'attendre l'expiration automatique (plus lente).
+                    clearNowPlaying()
+                }
                 lastPushedKey = null
                 return@launch
             }
@@ -105,15 +117,29 @@ class MediaWatcherService : NotificationListenerService() {
             val metadata = relevant.metadata ?: return@launch
             val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: return@launch
             val subtitle = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
+
+            val key = "${relevant.packageName}:$title:$subtitle"
+            val now = System.currentTimeMillis()
+            val heartbeatDue = now - lastHeartbeatAtMillis >= HEARTBEAT_INTERVAL_MILLIS
+
+            // Rien de nouveau et pas encore l'heure du heartbeat : rien à envoyer.
+            if (key == lastPushedKey && !heartbeatDue) return@launch
+
             val artBitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
 
-            val key = "${relevant.packageName}:$title:$subtitle"
-            if (key == lastPushedKey) return@launch
             lastPushedKey = key
-
+            lastHeartbeatAtMillis = now
             pushNowPlaying(relevant.packageName, title, subtitle, artBitmap)
+        }
+    }
+
+    /** Prévient le serveur que la lecture s'est arrêtée (en plus de l'expiration auto côté serveur). */
+    private suspend fun clearNowPlaying() {
+        runCatching {
+            val api = ApiClient.create(tokenStore)
+            api.deleteNowPlaying()
         }
     }
 
@@ -193,5 +219,6 @@ class MediaWatcherService : NotificationListenerService() {
 
     companion object {
         private const val NOTIFICATION_ID = 4271
+        private const val HEARTBEAT_INTERVAL_MILLIS = 5 * 60 * 1000L // 5 min
     }
 }
