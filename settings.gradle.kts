@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "RockniteBlog"
+rootProject.name = "Blogify"
 include(":app")

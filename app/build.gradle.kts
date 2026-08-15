@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "studio.rocknite.blog"
+        applicationId = "com.satanas1275.blogify"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
