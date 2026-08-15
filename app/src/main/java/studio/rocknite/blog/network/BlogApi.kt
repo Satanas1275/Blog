@@ -93,17 +93,6 @@ interface BlogApi {
     @POST("api/now-playing")
     suspend fun pushNowPlayingBody(@Body payload: NowPlayingPayload): Response<Unit>
 
-    suspend fun pushNowPlaying(
-        source: String,
-        title: String,
-        subtitle: String?,
-        link: String?,
-        state: String,
-        imageBase64: String? = null,
-    ): Response<Unit> {
-        return pushNowPlayingBody(NowPlayingPayload(source, title, subtitle, link, state, imageBase64))
-    }
-
     @GET("api/status")
     suspend fun getStatus(): Response<StatusResponse?>
 
@@ -124,4 +113,18 @@ interface BlogApi {
 
     @DELETE("api/media-apps/{id}")
     suspend fun deleteMediaApp(@Path("id") id: Long): Response<Unit>
+}
+
+// Fonction d'extension top-level, volontairement hors de l'interface BlogApi : une méthode avec
+// un corps par défaut à l'intérieur d'une interface Retrofit fait planter le proxy dynamique
+// ("HTTP method annotation is required") sauf compilation avec -Xjvm-default, donc on l'évite.
+suspend fun BlogApi.pushNowPlaying(
+    source: String,
+    title: String,
+    subtitle: String?,
+    link: String?,
+    state: String,
+    imageBase64: String? = null,
+): Response<Unit> {
+    return pushNowPlayingBody(NowPlayingPayload(source, title, subtitle, link, state, imageBase64))
 }

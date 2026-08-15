@@ -21,6 +21,7 @@ import studio.rocknite.blog.data.LastDetectionStore
 import studio.rocknite.blog.data.TokenStore
 import studio.rocknite.blog.data.TrackedPackagesCache
 import studio.rocknite.blog.network.ApiClient
+import studio.rocknite.blog.network.pushNowPlaying
 import java.io.ByteArrayOutputStream
 
 /**
