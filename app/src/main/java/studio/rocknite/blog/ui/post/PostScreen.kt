@@ -35,11 +35,13 @@ fun PostScreen(
     quickStatusLabels: List<String>,
     currentStatusLabel: String?,
     lastDetection: studio.rocknite.blog.data.LastDetectionStore.Snapshot?,
+    isCheckingNow: Boolean,
     onPublish: (content: String, images: List<Uri>, publishedAt: Date) -> Unit,
     onPickStatus: (String) -> Unit,
     onAddStatus: (String) -> Unit,
     onRemoveStatus: (String) -> Unit,
     onClearCurrentStatus: () -> Unit,
+    onRefreshNow: () -> Unit,
 ) {
     val context = LocalContext.current
     var content by remember { mutableStateOf("") }
@@ -118,7 +120,7 @@ fun PostScreen(
 
             HorizontalDivider()
 
-            DetectionIndicator(lastDetection)
+            DetectionIndicator(lastDetection, isCheckingNow, onRefreshNow)
 
             HorizontalDivider()
 
@@ -178,9 +180,20 @@ fun PostScreen(
  * pour que ça ne soit pas une boîte noire côté utilisateur.
  */
 @Composable
-private fun DetectionIndicator(lastDetection: studio.rocknite.blog.data.LastDetectionStore.Snapshot?) {
+private fun DetectionIndicator(
+    lastDetection: studio.rocknite.blog.data.LastDetectionStore.Snapshot?,
+    isCheckingNow: Boolean,
+    onRefreshNow: () -> Unit,
+) {
     Column {
-        Text("Détection média", style = MaterialTheme.typography.labelLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Détection média", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            if (isCheckingNow) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                TextButton(onClick = onRefreshNow) { Text("Rafraîchir maintenant") }
+            }
+        }
         Spacer(Modifier.height(4.dp))
         if (lastDetection == null) {
             Text(

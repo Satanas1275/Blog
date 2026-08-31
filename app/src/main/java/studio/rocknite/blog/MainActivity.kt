@@ -103,6 +103,7 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
                     quickStatusLabels = uiState.quickStatusLabels,
                     currentStatusLabel = uiState.currentStatusLabel,
                     lastDetection = uiState.lastDetection,
+                    isCheckingNow = uiState.isCheckingNow,
                     onPublish = { content: String, images: List<Uri>, publishedAt: Date ->
                         viewModel.publishPost(content, images, publishedAt)
                     },
@@ -110,6 +111,7 @@ private fun RootScaffold(viewModel: MainViewModel = viewModel()) {
                     onAddStatus = { label -> viewModel.addQuickStatus(label) },
                     onRemoveStatus = { label -> viewModel.removeQuickStatus(label) },
                     onClearCurrentStatus = { viewModel.clearCurrentStatus() },
+                    onRefreshNow = { viewModel.checkMediaNow() },
                 )
             }
             composable(Dest.Feed.route) {

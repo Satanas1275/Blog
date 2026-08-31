@@ -14,6 +14,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import studio.rocknite.blog.data.LastDetectionStore
 import studio.rocknite.blog.data.QuickStatusStore
 import studio.rocknite.blog.data.TokenStore
+import studio.rocknite.blog.data.TrackedPackagesCache
+import studio.rocknite.blog.media.MediaDetector
 import studio.rocknite.blog.network.AnalyticsSummary
 import studio.rocknite.blog.network.ApiClient
 import studio.rocknite.blog.network.MediaApp
@@ -38,6 +40,7 @@ data class MainUiState(
     val currentStatusLabel: String? = null,
     val mediaApps: List<MediaApp> = emptyList(),
     val lastDetection: LastDetectionStore.Snapshot? = null,
+    val isCheckingNow: Boolean = false,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -45,6 +48,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val tokenStore = TokenStore(application)
     private val quickStatusStore = QuickStatusStore(application)
     private val lastDetectionStore = LastDetectionStore(application)
+    private val trackedPackagesCache = TrackedPackagesCache(application)
     private var api = ApiClient.create(tokenStore)
 
     private val _uiState = MutableStateFlow(
@@ -61,6 +65,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshLastDetection() {
         _uiState.value = _uiState.value.copy(lastDetection = lastDetectionStore.get())
+    }
+
+    /**
+     * Force une détection immédiate sans dépendre du service en arrière-plan (utile quand il
+     * plante ou que le système l'a tué). Marche tant que l'accès aux notifications est accordé.
+     */
+    fun checkMediaNow() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isCheckingNow = true)
+            MediaDetector.checkOnce(
+                context = getApplication(),
+                tokenStore = tokenStore,
+                trackedPackagesCache = trackedPackagesCache,
+                lastDetectionStore = lastDetectionStore,
+                force = true,
+            )
+            _uiState.value = _uiState.value.copy(
+                isCheckingNow = false,
+                lastDetection = lastDetectionStore.get(),
+            )
+        }
     }
 
     fun loadMediaApps() {

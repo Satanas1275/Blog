@@ -4,13 +4,9 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ComponentName
-import android.graphics.Bitmap
-import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
-import android.media.session.PlaybackState
 import android.service.notification.NotificationListenerService
-import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,9 +16,6 @@ import kotlinx.coroutines.launch
 import studio.rocknite.blog.data.LastDetectionStore
 import studio.rocknite.blog.data.TokenStore
 import studio.rocknite.blog.data.TrackedPackagesCache
-import studio.rocknite.blog.network.ApiClient
-import studio.rocknite.blog.network.pushNowPlaying
-import java.io.ByteArrayOutputStream
 
 /**
  * Écoute les MediaSessions actives du système (fonctionne même en fullscreen / écran verrouillé,
@@ -30,8 +23,8 @@ import java.io.ByteArrayOutputStream
  *
  * La liste des apps suivies (package_name) et les messages affichés sont entièrement configurables
  * depuis l'app (écran "Apps suivies") et stockés côté serveur — ce service ne fait que pousser les
- * données brutes (package détecté, titre, artiste/épisode, pochette si dispo) vers /api/now-playing.
- * Le site choisit le message à afficher au hasard parmi les templates configurés pour ce package.
+ * données brutes (package détecté, titre, artiste/épisode, pochette si dispo) vers /api/now-playing
+ * via MediaDetector (logique partagée avec le bouton "Rafraîchir maintenant" de l'app).
  *
  * Deux mécanismes combinés pour la détection, plus fiables que l'écoute seule :
  *  - OnActiveSessionsChangedListener : réaction rapide quand une session démarre/s'arrête.
@@ -47,7 +40,9 @@ import java.io.ByteArrayOutputStream
  *
  * Foreground service (notification discrète) : sur les OEM agressifs sur la gestion batterie
  * (MIUI/Xiaomi en particulier), un service en pur arrière-plan peut voir son accès réseau coupé.
- * Le passer en foreground réduit fortement ce risque.
+ * Le passer en foreground réduit fortement ce risque. Si le service plante quand même ou que le
+ * système le tue, le bouton "Rafraîchir maintenant" (écran Poster) permet de forcer une détection
+ * sans dépendre de lui.
  */
 class MediaWatcherService : NotificationListenerService() {
 
@@ -101,22 +96,22 @@ class MediaWatcherService : NotificationListenerService() {
 
     private fun checkSessions(controllers: List<MediaController>) {
         scope.launch {
-            val tracked = fetchTrackedPackages()
+            val tracked = MediaDetector.fetchTrackedPackages(tokenStore, trackedPackagesCache)
 
-            val relevant = controllers.firstOrNull { it.packageName in tracked && isPlaying(it) }
+            val relevant = controllers.firstOrNull { it.packageName in tracked && MediaDetector.isPlaying(it) }
             if (relevant == null) {
                 if (lastPushedKey != null) {
                     // On jouait quelque chose de suivi juste avant : on prévient explicitement le
                     // serveur de l'arrêt plutôt que d'attendre l'expiration automatique (plus lente).
-                    clearNowPlaying()
+                    MediaDetector.clearNowPlaying(tokenStore)
                 }
                 lastPushedKey = null
                 return@launch
             }
 
             val metadata = relevant.metadata ?: return@launch
-            val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: return@launch
-            val subtitle = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
+            val title = metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: return@launch
+            val subtitle = metadata.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST)
 
             val key = "${relevant.packageName}:$title:$subtitle"
             val now = System.currentTimeMillis()
@@ -125,80 +120,14 @@ class MediaWatcherService : NotificationListenerService() {
             // Rien de nouveau et pas encore l'heure du heartbeat : rien à envoyer.
             if (key == lastPushedKey && !heartbeatDue) return@launch
 
-            val artBitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-                ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+            val artBitmap = metadata.getBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?: metadata.getBitmap(android.media.MediaMetadata.METADATA_KEY_ART)
+                ?: metadata.getBitmap(android.media.MediaMetadata.METADATA_KEY_DISPLAY_ICON)
 
             lastPushedKey = key
             lastHeartbeatAtMillis = now
-            pushNowPlaying(relevant.packageName, title, subtitle, artBitmap)
+            MediaDetector.pushNowPlaying(tokenStore, lastDetectionStore, relevant.packageName, title, subtitle, artBitmap)
         }
-    }
-
-    /** Prévient le serveur que la lecture s'est arrêtée (en plus de l'expiration auto côté serveur). */
-    private suspend fun clearNowPlaying() {
-        runCatching {
-            val api = ApiClient.create(tokenStore)
-            api.deleteNowPlaying()
-        }
-    }
-
-    private suspend fun fetchTrackedPackages(): Set<String> {
-        return runCatching {
-            val api = ApiClient.create(tokenStore)
-            val response = api.getMediaApps()
-            if (response.isSuccessful) {
-                val names = response.body()?.map { it.package_name }?.toSet() ?: emptySet()
-                if (names.isNotEmpty()) trackedPackagesCache.set(names)
-                names
-            } else {
-                trackedPackagesCache.get()
-            }
-        }.getOrElse { trackedPackagesCache.get() }
-    }
-
-    private fun isPlaying(controller: MediaController): Boolean =
-        controller.playbackState?.state == PlaybackState.STATE_PLAYING
-
-    private suspend fun pushNowPlaying(packageName: String, title: String, subtitle: String?, imageBitmap: Bitmap?) {
-        val imageBase64 = runCatching { imageBitmap?.let { bitmapToBase64Jpeg(it) } }
-            .getOrElse {
-                // L'encodage de l'image a échoué (bitmap trop gros/invalide) : on envoie quand même
-                // le texte sans image plutôt que de tout annuler.
-                null
-            }
-
-        runCatching {
-            val api = ApiClient.create(tokenStore)
-            val response = api.pushNowPlaying(packageName, title, subtitle, null, "playing", imageBase64)
-            if (response.isSuccessful) {
-                lastDetectionStore.setDetected(packageName, title, subtitle, pushOk = true)
-            } else {
-                lastDetectionStore.setDetected(
-                    packageName, title, subtitle, pushOk = false,
-                    errorDetail = "HTTP ${response.code()}",
-                )
-            }
-        }.onFailure { e ->
-            lastDetectionStore.setDetected(
-                packageName, title, subtitle, pushOk = false,
-                errorDetail = "${e::class.simpleName}: ${e.message}",
-            )
-        }
-    }
-
-    /** Redimensionne + compresse en JPEG pour rester léger avant l'envoi en base64. */
-    private fun bitmapToBase64Jpeg(bitmap: Bitmap): String {
-        val maxSize = 256
-        val scale = maxSize.toFloat() / maxOf(bitmap.width, bitmap.height)
-        val scaled = if (scale < 1f) {
-            Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
-        } else {
-            bitmap
-        }
-        val stream = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, 80, stream)
-        return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun startForegroundWithNotification() {
